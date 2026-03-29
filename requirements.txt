@@ -1,0 +1,15 @@
+# Scene Segmentation Tool - Python Dependencies
+
+# Deep Learning & Model
+tensorflow-cpu>=2.10.0  # TransNetV2 model (CPU version, smaller size)
+numpy>=1.21.0          # Array operations
+
+# Video Processing
+moviepy>=1.0.0,<1.1    # Video I/O for TransNetV2 (must be 1.0.x, not 2.x)
+
+# GUI (PyQt6)
+PyQt6>=6.0.0           # GUI framework
+PyQt6-sip>=13.0.0      # PyQt6 support library
+
+# Image Processing
+Pillow>=9.0.0          # Image display and manipulation

@@ -1,0 +1,126 @@
+[PYI-6176:DEBUG] PyInstaller Bootloader 6.x
+[PYI-6176:DEBUG] LOADER: argv[0]: D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-6176:DEBUG] LOADER: executable file: D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-6176:DEBUG] LOADER: trying to load executable-embedded archive...
+[PYI-6176:DEBUG] LOADER: attempting to open archive D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-6176:DEBUG] LOADER: cookie found at offset 0x1BE37666
+[PYI-6176:DEBUG] LOADER: archive file: D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-6176:DEBUG] LOADER: application has onefile semantics...
+[PYI-6176:DEBUG] LOADER: _PYI_ARCHIVE_FILE not defined...
+[PYI-6176:DEBUG] LOADER: parent process level = -2
+[PYI-6176:DEBUG] LOADER: process level = 0
+[PYI-6176:DEBUG] LOADER: this is parent process of onefile application.
+[PYI-6176:DEBUG] LOADER: initializing security descriptor for temporary directory...
+[PYI-6176:DEBUG] LOADER: initializing security descriptor from string: D:(A;;FA;;;S-1-5-21-442826833-2869068723-2417693016-1001)
+[PYI-6176:DEBUG] LOADER: creating temporary directory (runtime_tmpdir=(null))...
+[PYI-6176:DEBUG] LOADER: attempting to create temporary application directory under C:\Users\hdxtt\AppData\Local\Temp\
+[PYI-6176:DEBUG] LOADER: created temporary directory: C:\Users\hdxtt\AppData\Local\Temp\_MEI61762
+[PYI-6176:DEBUG] LOADER: setting _PYI_APPLICATION_HOME_DIR to C:\Users\hdxtt\AppData\Local\Temp\_MEI61762
+[PYI-6176:DEBUG] LOADER: application's top-level directory: C:\Users\hdxtt\AppData\Local\Temp\_MEI61762
+[PYI-6176:DEBUG] LOADER: attempting to pre-load system copy of VCRUNTIME140.dll...
+[PYI-6176:DEBUG] LOADER: successfully loaded system copy of VCRUNTIME140.dll.
+[PYI-6176:DEBUG] LOADER: attempting to pre-load system copy of VCRUNTIME140_1.dll...
+[PYI-6176:DEBUG] LOADER: successfully loaded system copy of VCRUNTIME140_1.dll.
+[PYI-6176:DEBUG] LOADER: calling SetDllDirectoryW: C:\Users\hdxtt\AppData\Local\Temp\_MEI61762
+[PYI-6176:DEBUG] LOADER: splash screen is unavailable.
+[PYI-6176:DEBUG] LOADER: extracting files to temporary directory...
+[PYI-6176:DEBUG] LOADER: starting the child process...
+[PYI-6176:DEBUG] LOADER: setting up child process...
+[PYI-6176:DEBUG] LOADER: child process started!
+[PYI-6176:DEBUG] LOADER: creating hidden window to capture system shutdown events...
+[PYI-6176:DEBUG] LOADER: hidden window created!
+[PYI-6176:DEBUG] LOADER: entering the waiting loop...
+[PYI-23780:DEBUG] PyInstaller Bootloader 6.x
+[PYI-23780:DEBUG] LOADER: argv[0]: D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-23780:DEBUG] LOADER: executable file: D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-23780:DEBUG] LOADER: trying to load executable-embedded archive...
+[PYI-23780:DEBUG] LOADER: attempting to open archive D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-23780:DEBUG] LOADER: cookie found at offset 0x1BE37666
+[PYI-23780:DEBUG] LOADER: archive file: D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-23780:DEBUG] LOADER: application has onefile semantics...
+[PYI-23780:DEBUG] LOADER: _PYI_ARCHIVE_FILE already defined: D:\Documents\code\scene_tool\scen_main\dist\???????????? v1.0.exe
+[PYI-23780:DEBUG] LOADER: using same archive file as parent environment!
+[PYI-23780:DEBUG] LOADER: parent process level = 0
+[PYI-23780:DEBUG] LOADER: process level = 1
+[PYI-23780:DEBUG] LOADER: this is child process of onefile application (main application process).
+[PYI-23780:DEBUG] LOADER: application's top-level directory: C:\Users\hdxtt\AppData\Local\Temp\_MEI61762
+[PYI-23780:DEBUG] LOADER: calling SetDllDirectoryW: C:\Users\hdxtt\AppData\Local\Temp\_MEI61762
+[PYI-23780:DEBUG] LOADER: splash screen is unavailable.
+[PYI-23780:DEBUG] DYLIB: attempting to pre-load bundled copy of ucrtbase.dll: C:\Users\hdxtt\AppData\Local\Temp\_MEI61762\ucrtbase.dll
+[PYI-23780:DEBUG] DYLIB: loading Python DLL: C:\Users\hdxtt\AppData\Local\Temp\_MEI61762\python312.dll
+[PYI-23780:DEBUG] DYLIB: loaded Python shared library.
+[PYI-23780:DEBUG] DYLIB: imported symbols from Python shared library.
+[PYI-23780:DEBUG] LOADER: pre-initializing embedded python interpreter...
+[PYI-23780:DEBUG] LOADER: using PEP-587 API...
+[PYI-23780:DEBUG] LOADER: creating PyConfig structure...
+[PYI-23780:DEBUG] LOADER: initializing interpreter configuration...
+[PYI-23780:DEBUG] LOADER: setting program name...
+[PYI-23780:DEBUG] LOADER: setting python home path...
+[PYI-23780:DEBUG] LOADER: setting module search paths...
+[PYI-23780:DEBUG] LOADER: setting sys.argv...
+[PYI-23780:DEBUG] LOADER: applying run-time options...
+[PYI-23780:DEBUG] LOADER: starting embedded python interpreter...
+[PYI-23780:DEBUG] LOADER: setting sys._MEIPASS
+[PYI-23780:DEBUG] LOADER: importing modules from PKG/CArchive
+[PYI-23780:DEBUG] LOADER: extracted struct
+[PYI-23780:DEBUG] LOADER: running unmarshalled code object for module struct...
+[PYI-23780:DEBUG] LOADER: extracted pyimod01_archive
+[PYI-23780:DEBUG] LOADER: running unmarshalled code object for module pyimod01_archive...
+[PYI-23780:DEBUG] LOADER: extracted pyimod02_importers
+[PYI-23780:DEBUG] LOADER: running unmarshalled code object for module pyimod02_importers...
+[PYI-23780:DEBUG] LOADER: extracted pyimod03_ctypes
+[PYI-23780:DEBUG] LOADER: running unmarshalled code object for module pyimod03_ctypes...
+[PYI-23780:DEBUG] LOADER: extracted pyimod04_pywin32
+[PYI-23780:DEBUG] LOADER: running unmarshalled code object for module pyimod04_pywin32...
+[PYI-23780:DEBUG] LOADER: looking for PYZ archive TOC entry...
+[PYI-23780:DEBUG] LOADER: path to PYZ archive stored into sys._pyinstaller_pyz...
+[PYI-23780:DEBUG] LOADER: running pyiboot01_bootstrap.py
+[PYI-23780:DEBUG] LOADER: running pyi_rth_inspect.py
+[PYI-23780:DEBUG] LOADER: running pyi_rth_pkgutil.py
+[PYI-23780:DEBUG] LOADER: running pyi_rth_multiprocessing.py
+[PYI-23780:DEBUG] LOADER: running pyi_rth_pyqt6.py
+[PYI-23780:DEBUG] LOADER: running pyi_rth_setuptools.py
+[PYI-23780:DEBUG] LOADER: running pyi_rth__tkinter.py
+[PYI-23780:DEBUG] LOADER: running pyi_rth_tensorflow.py
+[PYI-23780:DEBUG] LOADER: running main.py
+[INFO] 找到本地FFmpeg: D:\Documents\code\scene_tool\scen_main\dist\ffmpeg.exe
+[INFO] 使用FFmpeg: D:\Documents\code\scene_tool\scen_main\dist\ffmpeg.exe
+2025-12-11 08:58:15.910502: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-12-11 08:58:16.807817: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+[OK] TensorFlow 2.20.0 可用
+Traceback (most recent call last):
+  File "importlib\metadata\__init__.py", line 397, in from_name
+StopIteration
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "main.py", line 234, in smart_split
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "transnetv2.py", line 9, in <module>
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "moviepy\editor.py", line 24, in <module>
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "imageio\__init__.py", line 21, in <module>
+  File "importlib\metadata\__init__.py", line 889, in version
+  File "importlib\metadata\__init__.py", line 862, in distribution
+  File "importlib\metadata\__init__.py", line 399, in from_name
+importlib.metadata.PackageNotFoundError: No package metadata was found for imageio
+Traceback (most recent call last):
+  File "importlib\metadata\__init__.py", line 397, in from_name
+StopIteration
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "main.py", line 234, in smart_split
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "transnetv2.py", line 9, in <module>
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "moviepy\editor.py", line 24, in <module>
+  File "pyimod02_importers.py", line 457, in exec_module
+  File "imageio\__init__.py", line 21, in <module>
+  File "importlib\metadata\__init__.py", line 889, in version
+  File "importlib\metadata\__init__.py", line 862, in distribution
+  File "importlib\metadata\__init__.py", line 399, in from_name
+importlib.metadata.PackageNotFoundError: No package metadata was found for imageio

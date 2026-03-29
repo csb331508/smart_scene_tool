@@ -1,0 +1,9 @@
+{
+  "mode": "smart",
+  "min_duration": 30.0,
+  "max_duration": 60.0,
+  "short_segment_strategy": "merge",
+  "gpu_acceleration": "auto",
+  "input_folder": "D:/Downloads/漫剧test/11/前",
+  "output_folder": "D:/Downloads/漫剧test/11/后"
+}
