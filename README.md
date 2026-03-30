@@ -26,12 +26,49 @@
 - **FFmpeg**: 需要安装FFmpeg（用于视频处理）
 - **硬盘空间**: 至少2GB可用空间（TensorFlow占用约500MB）
 
+### 环境选择
+
+- **默认 CPU 环境**: 直接使用 `requirements.txt`，兼容当前 Python 3.12
+- **方案 1 - Windows 原生 GPU TensorFlow**:
+  - Python 3.10
+  - TensorFlow 2.10
+  - CUDA 11.2
+  - cuDNN 8.1
+  - 仅适用于 NVIDIA 显卡
+
 ## 安装步骤
 
 ### 1. 安装Python依赖
 
 ```bash
 pip install -r requirements.txt
+```
+
+如果你要启用 **方案 1 的 TensorFlow GPU 推理**，不要直接改默认环境，请使用单独的 GPU 环境：
+
+```bash
+setup_gpu_tf_win_native.bat
+run_gpu_tf_win_native.bat
+```
+
+如果官方源下载很慢或长时间卡在很低进度，可以改用国内镜像版安装脚本：
+
+```bash
+setup_gpu_tf_win_native_cn.bat
+```
+
+如果是 RTX 50 系列这类较新的显卡，首次 TensorFlow GPU 运行可能会触发 PTX JIT 编译，建议先执行一次预热：
+
+```bash
+warmup_gpu_tf_win_native.bat
+```
+
+或手动执行：
+
+```bash
+conda env create -f environment-gpu-win-py310.yml
+conda run -n scen_main_tf_gpu310 python check_tensorflow_runtime.py --require-gpu
+conda run -n scen_main_tf_gpu310 python main.py
 ```
 
 ### 2. 安装FFmpeg
@@ -150,11 +187,24 @@ python main.py
 ### 问题: "TensorFlow不可用"
 
 **解决方案**:
-1. 重新安装TensorFlow:
+1. 默认 CPU 环境重新安装:
    ```bash
    pip install tensorflow-cpu>=2.10.0
    ```
-2. 如果仍然失败，使用"普通场景分割"模式
+2. 如果需要 TensorFlow GPU 推理，请使用 `setup_gpu_tf_win_native.bat`
+3. 如果仍然失败，使用"普通场景分割"模式
+
+### 问题: 智能分析阶段 GPU 占用仍然很低
+
+**说明**:
+1. 分析阶段分为两段：
+   - 抽取分析帧：现在已优先走 FFmpeg 硬件解码
+   - TransNetV2 模型推理：只有安装了 TensorFlow GPU 环境才会使用显卡
+2. 如果当前环境是 `tensorflow-cpu`，那模型推理一定还是 CPU
+3. 可以运行以下命令确认：
+   ```bash
+   python check_tensorflow_runtime.py
+   ```
 
 ### 问题: 处理速度很慢
 
@@ -186,13 +236,14 @@ pyinstaller build.spec
 - **TransNetV2**: 视频场景检测深度学习模型
 - **FFmpeg**: 视频编解码和处理
 - **PyQt6**: GUI框架
-- **MoviePy**: 视频帧提取
+- **TensorFlow**: TransNetV2 模型推理
 
 ## 限制与注意事项
 
 ⚠️ **重要提示**:
 - 智能分割需要TensorFlow，首次运行可能需要下载模型
 - GPU加速需要安装相应的驱动程序（CUDA for NVIDIA, OpenCL for AMD）
+- Windows 原生 TensorFlow GPU 仅建议使用 `Python 3.10 + TensorFlow 2.10`
 - 处理大文件时需要足够的磁盘空间
 - 建议在处理前备份原始视频文件
 

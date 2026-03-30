@@ -1,4 +1,5 @@
 # Scene Segmentation Tool - Python Dependencies
+# 默认 CPU 环境（兼容现有 Python 3.12 环境）
 
 # Deep Learning & Model
 tensorflow-cpu>=2.10.0  # TransNetV2 model (CPU version, smaller size)

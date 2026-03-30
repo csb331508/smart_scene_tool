@@ -1,0 +1,17 @@
+# Scene Segmentation Tool - Windows native GPU TensorFlow environment
+# 方案 1: Python 3.10 + TensorFlow 2.10 + CUDA 11.2 + cuDNN 8.1
+# 注意：这是给 Windows 原生 GPU TensorFlow 单独准备的环境文件
+
+# Deep Learning & Model
+tensorflow==2.10.0
+numpy>=1.21,<2.0
+
+# Video Processing
+moviepy>=1.0.0,<1.1
+
+# GUI
+PyQt6>=6.0.0
+PyQt6-sip>=13.0.0
+
+# Image Processing
+Pillow>=9.0.0

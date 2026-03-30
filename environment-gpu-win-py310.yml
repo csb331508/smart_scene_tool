@@ -1,0 +1,15 @@
+name: scen_main_tf_gpu310
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - cudatoolkit=11.2
+  - cudnn=8.1.0
+  - pip
+  - pip:
+      - tensorflow==2.10.0
+      - numpy>=1.21,<2.0
+      - moviepy>=1.0.0,<1.1
+      - PyQt6>=6.0.0
+      - PyQt6-sip>=13.0.0
+      - Pillow>=9.0.0

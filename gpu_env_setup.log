@@ -1,0 +1,7 @@
+[START] 周一 2026/03/30 10:44:04.57
+[INFO] setup_gpu_tf_win_native.bat
+[STEP] reuse env
+[STEP] reuse shared CUDA runtime
+[STEP] upgrade pip
+[STEP] pip install requirements-gpu-win-py310.txt
+[STEP] verify tensorflow gpu

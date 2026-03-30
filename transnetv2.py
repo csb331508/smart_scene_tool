@@ -1,17 +1,17 @@
-import math
 import os
+import subprocess
+import sys
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 import numpy as np
 import tensorflow as tf
-from moviepy.editor import VideoFileClip
 
 
 class TransNetV2:
 
-    def __init__(self, model_dir=None):
+    def __init__(self, model_dir=None, ffmpeg_path="ffmpeg", gpu_acceleration="auto"):
         if model_dir is None:
             # model_dir = os.path.join(os.path.dirname(__file__), "transnetv2-weights/")
             model_dir = "transnetv2-weights/"
@@ -21,6 +21,18 @@ class TransNetV2:
                 print(f"[TransNetV2] Using weights from {model_dir}.")
 
         self._input_size = (27, 48, 3)
+        self.ffmpeg_path = ffmpeg_path
+        self.gpu_acceleration = gpu_acceleration
+        self.analysis_acceleration_status = "CPU"
+        self.inference_device_status = "TensorFlow CPU"
+        gpu_devices = tf.config.list_physical_devices("GPU")
+        if gpu_devices:
+            for gpu in gpu_devices:
+                try:
+                    tf.config.experimental.set_memory_growth(gpu, True)
+                except Exception:
+                    pass
+            self.inference_device_status = f"TensorFlow GPU ({len(gpu_devices)} 张)"
         try:
             self._model = tf.saved_model.load(model_dir)
         except OSError as exc:
@@ -39,7 +51,7 @@ class TransNetV2:
 
         return single_frame_pred, all_frames_pred
 
-    def predict_frames(self, frames: np.ndarray):
+    def predict_frames(self, frames: np.ndarray, progress_callback=None):
         assert len(frames.shape) == 4 and frames.shape[1:] == self._input_size, \
             "[TransNetV2] Input shape must be [frames, height, width, 3]."
 
@@ -68,9 +80,12 @@ class TransNetV2:
             predictions.append((single_frame_pred.numpy()[0, 25:75, 0],
                                 all_frames_pred.numpy()[0, 25:75, 0]))
 
+            processed_frames = min(len(predictions) * 50, len(frames))
             print("\r[TransNetV2] Processing video frames {}/{}".format(
-                min(len(predictions) * 50, len(frames)), len(frames)
+                processed_frames, len(frames)
             ), end="")
+            if progress_callback:
+                progress_callback(f"正在模型推理... {processed_frames}/{len(frames)} 帧")
 
         print("\n")
 
@@ -95,39 +110,105 @@ class TransNetV2:
         video = np.frombuffer(video_stream, np.uint8).reshape([-1, 27, 48, 3])
         return (video, *self.predict_frames(video))
 
-    def predict_video_2(self, video_fn: str):
+    def _get_hwaccel_candidates(self):
+        """根据选择返回分析阶段的硬件解码候选"""
+        if self.gpu_acceleration == "nvidia":
+            return [("cuda", "NVIDIA CUDA"), (None, "CPU")]
+        if self.gpu_acceleration == "amd":
+            return [("d3d11va", "D3D11VA"), ("dxva2", "DXVA2"), (None, "CPU")]
+        if self.gpu_acceleration == "cpu":
+            return [(None, "CPU")]
+        return [("cuda", "NVIDIA CUDA"), ("d3d11va", "D3D11VA"), ("dxva2", "DXVA2"), (None, "CPU")]
+
+    def _run_ffmpeg_extract(self, cmd):
+        """执行FFmpeg抽帧命令"""
+        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        return subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=3600,
+            creationflags=creationflags
+        )
+
+    def _decode_ffmpeg_error(self, raw_error):
+        """提取FFmpeg错误摘要"""
+        text = raw_error.decode("utf-8", errors="replace").strip()
+        if not text:
+            return "未知错误"
+
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        for line in reversed(lines):
+            if line.lower() == "conversion failed!":
+                continue
+            return line
+        return lines[-1]
+
+    def _build_extract_frames_cmd(self, video_fn: str, hwaccel_method=None):
+        """构建分析阶段抽帧命令"""
+        cmd = [
+            self.ffmpeg_path,
+            "-hide_banner",
+            "-loglevel", "error"
+        ]
+
+        if hwaccel_method:
+            cmd.extend(["-hwaccel", hwaccel_method])
+
+        cmd.extend([
+            "-i", video_fn,
+            "-an",
+            "-sn",
+            "-dn"
+        ])
+
+        cmd.extend([
+            "-vf", "scale=48:27:flags=fast_bilinear,format=rgb24",
+            "-pix_fmt", "rgb24",
+            "-f", "rawvideo",
+            "pipe:1"
+        ])
+        return cmd
+
+    def _extract_frames_with_ffmpeg(self, video_fn: str, progress_callback=None):
+        """使用FFmpeg批量抽取分析所需帧"""
+        frame_size = int(np.prod(self._input_size))
+        last_error = "未知错误"
+
+        for hwaccel_method, label in self._get_hwaccel_candidates():
+            if progress_callback:
+                progress_callback("正在提取分析帧...")
+
+            cmd = self._build_extract_frames_cmd(video_fn, hwaccel_method)
+            result = self._run_ffmpeg_extract(cmd)
+
+            if result.returncode != 0:
+                last_error = self._decode_ffmpeg_error(result.stderr)
+                print(f"[TransNetV2] Hardware decode fallback from {label}: {last_error}")
+                continue
+
+            raw_video = result.stdout
+            if not raw_video:
+                last_error = "FFmpeg未返回任何视频帧"
+                print(f"[TransNetV2] Hardware decode fallback from {label}: {last_error}")
+                continue
+
+            if len(raw_video) % frame_size != 0:
+                last_error = f"抽帧数据长度异常: {len(raw_video)}"
+                print(f"[TransNetV2] Hardware decode fallback from {label}: {last_error}")
+                continue
+
+            video = np.frombuffer(raw_video, np.uint8).reshape([-1, 27, 48, 3])
+            self.analysis_acceleration_status = label
+            print(f"[TransNetV2] Successfully extracted {len(video)} frames with {label}")
+            return video
+
+        raise RuntimeError(f"[TransNetV2] Failed to extract frames: {last_error}")
+
+    def predict_video_2(self, video_fn: str, progress_callback=None):
         print("[TransNetV2] Extracting frames from {}".format(video_fn))
-        clip = VideoFileClip(video_fn, target_resolution=(27, 48))
-        try:
-            duration = math.floor(clip.duration * 10) / 10
-            fps = clip.fps  # 视频的帧率
-            total_frames = int(duration * fps)
-            print(f"[TransNetV2] Video duration: {duration}s, FPS: {fps}, Total frames: {total_frames}")
-
-            frames = []
-            for i, t in enumerate(range(0, total_frames)):
-                try:
-                    frame = clip.get_frame(t / fps)  # 获取当前时间点的帧
-                    if len(frame) != 0:  # 如果帧的长度不为零
-                        frames.append(frame)  # 将帧添加到 frames 列表中
-
-                    # 每100帧打印一次进度
-                    if (i + 1) % 100 == 0:
-                        print(f"[TransNetV2] Extracted {i + 1}/{total_frames} frames")
-                except Exception as e:
-                    print(f"[TransNetV2] Warning: Failed to extract frame {i}: {e}")
-                    continue
-
-            print(f"[TransNetV2] Successfully extracted {len(frames)} frames")
-            video = np.array(frames)
-            return video, *self.predict_frames(video)
-        finally:
-            # 确保视频文件被正确关闭，释放资源
-            try:
-                clip.close()
-                print("[TransNetV2] Video clip closed successfully")
-            except Exception as e:
-                print(f"[TransNetV2] Warning: Failed to close video clip: {e}")
+        video = self._extract_frames_with_ffmpeg(video_fn, progress_callback)
+        return video, *self.predict_frames(video, progress_callback=progress_callback)
 
     @staticmethod
     def predictions_to_scenes(predictions: np.ndarray, threshold: float = 0.15):

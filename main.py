@@ -120,10 +120,16 @@ class VideoSplitter:
         print(f"[INFO] 使用FFmpeg: {self.ffmpeg_path}")
         
         # 检查TensorFlow可用性
+        self.tensorflow_version = None
+        self.tensorflow_gpu_available = False
+        self.tensorflow_device_summary = "TensorFlow 未加载"
         self.tensorflow_available = self._check_tensorflow()
         
         # GPU加速设置
         self.gpu_acceleration = "auto"
+        self.acceleration_status = "CPU (libx264)"
+        self._encoder_probe_cache = {}
+        self._resolved_encoder = None
         
     def _find_ffmpeg(self):
         """查找FFmpeg可执行文件 - 优先查找程序目录"""
@@ -160,23 +166,182 @@ class VideoSplitter:
         """检查TensorFlow是否可用"""
         try:
             import tensorflow as tf
+            self.tensorflow_version = tf.__version__
+            gpu_devices = tf.config.list_physical_devices('GPU')
+            self.tensorflow_gpu_available = bool(gpu_devices)
+
+            if gpu_devices:
+                for gpu in gpu_devices:
+                    try:
+                        tf.config.experimental.set_memory_growth(gpu, True)
+                    except Exception:
+                        pass
+
+            if self.tensorflow_gpu_available:
+                self.tensorflow_device_summary = f"TensorFlow GPU ({len(gpu_devices)} 张)"
+            else:
+                self.tensorflow_device_summary = "TensorFlow CPU"
+
             print(f"[OK] TensorFlow {tf.__version__} 可用")
+            print(f"[INFO] TensorFlow 推理设备: {self.tensorflow_device_summary}")
             return True
         except ImportError:
+            self.tensorflow_version = None
+            self.tensorflow_gpu_available = False
+            self.tensorflow_device_summary = "TensorFlow 未安装"
             print("[WARNING] TensorFlow不可用，智能分割功能将被禁用")
             return False
     
     def set_gpu_acceleration(self, gpu_type):
         """设置GPU加速类型"""
         self.gpu_acceleration = gpu_type
+        self.acceleration_status = "CPU (libx264)"
+        self._resolved_encoder = None
+
+    def _run_ffmpeg_command(self, cmd, timeout):
+        """统一执行FFmpeg命令，避免重复的子进程配置"""
+        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+        return subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            timeout=timeout,
+            creationflags=creationflags
+        )
+
+    def _build_encoder_config(self, backend):
+        """根据后端类型构建视频编码配置"""
+        configs = {
+            'cpu': {
+                'backend': 'cpu',
+                'codec': 'libx264',
+                'label': 'CPU (libx264)',
+                'args': ['-preset', 'fast', '-crf', '23']
+            },
+            'nvidia': {
+                'backend': 'nvidia',
+                'codec': 'h264_nvenc',
+                'label': 'NVIDIA NVENC',
+                'args': ['-preset', 'fast', '-rc', 'constqp', '-qp', '23']
+            },
+            'amd': {
+                'backend': 'amd',
+                'codec': 'h264_amf',
+                'label': 'AMD AMF',
+                'args': ['-quality', 'speed', '-rc', 'cqp', '-qp_i', '23', '-qp_p', '23']
+            }
+        }
+        return configs[backend]
+
+    def _get_acceleration_priority(self):
+        """根据用户选择返回编码后端优先级"""
+        if self.gpu_acceleration == 'nvidia':
+            return ['nvidia', 'cpu']
+        if self.gpu_acceleration == 'amd':
+            return ['amd', 'cpu']
+        if self.gpu_acceleration == 'cpu':
+            return ['cpu']
+        return ['nvidia', 'amd', 'cpu']
+
+    def _probe_encoder(self, encoder_config):
+        """轻量探测编码器是否能在当前机器上正常初始化"""
+        backend = encoder_config['backend']
+        if backend == 'cpu':
+            return True
+
+        if backend in self._encoder_probe_cache:
+            return self._encoder_probe_cache[backend]
+
+        cmd = [
+            self.ffmpeg_path,
+            '-hide_banner',
+            '-loglevel', 'error',
+            '-f', 'lavfi',
+            '-i', 'color=c=black:s=640x360:d=0.2:r=24',
+            '-frames:v', '1',
+            '-an',
+            '-c:v', encoder_config['codec']
+        ]
+        cmd.extend(encoder_config['args'])
+        cmd.extend(['-f', 'null', '-'])
+
+        try:
+            result = self._run_ffmpeg_command(cmd, timeout=15)
+            available = result.returncode == 0
+            self._encoder_probe_cache[backend] = available
+
+            if available:
+                print(f"[INFO] 硬件编码器可用: {encoder_config['label']}")
+            else:
+                error_msg = self._extract_ffmpeg_error(result)
+                print(f"[WARNING] 硬件编码器不可用: {encoder_config['label']} - {error_msg}")
+
+            return available
+        except Exception as e:
+            self._encoder_probe_cache[backend] = False
+            print(f"[WARNING] 探测硬件编码器失败: {encoder_config['label']} - {e}")
+            return False
+
+    def _extract_ffmpeg_error(self, result):
+        """提取FFmpeg错误信息中的有效摘要"""
+        raw_output = (result.stderr or result.stdout or '').strip()
+        if not raw_output:
+            return "未知错误"
+
+        lines = [line.strip() for line in raw_output.splitlines() if line.strip()]
+        ignore_tokens = ('ffmpeg version', 'configuration:', 'libav', 'Input #', 'Output #', 'Stream #')
+
+        for line in reversed(lines):
+            if any(token in line for token in ignore_tokens):
+                continue
+            if line.lower() == 'conversion failed!':
+                continue
+            return line
+
+        return lines[-1]
+
+    def _resolve_video_encoder(self):
+        """根据用户选择解析实际使用的视频编码器"""
+        if self._resolved_encoder is not None:
+            return self._resolved_encoder
+
+        for backend in self._get_acceleration_priority():
+            encoder_config = self._build_encoder_config(backend)
+            if self._probe_encoder(encoder_config):
+                self._resolved_encoder = encoder_config
+                self.acceleration_status = encoder_config['label']
+                print(f"[INFO] 当前视频编码器: {encoder_config['label']}")
+                return encoder_config
+
+        self._resolved_encoder = self._build_encoder_config('cpu')
+        self.acceleration_status = self._resolved_encoder['label']
+        print(f"[INFO] 当前视频编码器: {self._resolved_encoder['label']}")
+        return self._resolved_encoder
+
+    def _build_extract_command(self, video_path, output_path, start_time, end_time, encoder_config):
+        """构建提取片段命令，保留原有切片时序逻辑，仅替换视频编码器"""
+        cmd = [
+            self.ffmpeg_path,
+            '-i', video_path,
+            '-ss', str(start_time),
+            '-to', str(end_time),
+            '-c:v', encoder_config['codec'],
+            '-c:a', 'aac'
+        ]
+        cmd.extend(encoder_config['args'])
+        cmd.extend([
+            '-y',
+            output_path
+        ])
+        return cmd
     
     def _get_video_metadata(self, video_path):
         """获取视频元数据（时长和帧率）"""
         try:
             cmd = [self.ffmpeg_path, '-i', video_path]
-            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8',
-                                  timeout=10, creationflags=creationflags)
+            result = self._run_ffmpeg_command(cmd, timeout=10)
             
             # 解析时长
             duration_match = re.search(r'Duration: (\d+):(\d+):(\d+\.\d+)', result.stderr)
@@ -201,25 +366,32 @@ class VideoSplitter:
             duration = end_time - start_time
             if duration < 0.01:
                 return False
-            
-            cmd = [
-                self.ffmpeg_path,
-                '-i', video_path,
-                '-ss', str(start_time),
-                '-to', str(end_time),
-                '-c:v', 'libx264',
-                '-c:a', 'aac',
-                '-preset', 'fast',
-                '-crf', '23',
-                '-y',
-                output_path
-            ]
-            
-            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8',
-                                  timeout=3600, creationflags=creationflags)
-            
-            return result.returncode == 0 and os.path.exists(output_path)
+
+            encoder_config = self._resolve_video_encoder()
+            cmd = self._build_extract_command(
+                video_path, output_path, start_time, end_time, encoder_config
+            )
+            result = self._run_ffmpeg_command(cmd, timeout=3600)
+
+            if result.returncode == 0 and os.path.exists(output_path):
+                return True
+
+            if encoder_config['backend'] != 'cpu':
+                error_msg = self._extract_ffmpeg_error(result)
+                print(f"[WARNING] {encoder_config['label']} 编码失败，自动回退CPU: {error_msg}")
+
+                cpu_config = self._build_encoder_config('cpu')
+                self._encoder_probe_cache[encoder_config['backend']] = False
+                self._resolved_encoder = cpu_config
+                self.acceleration_status = f"{encoder_config['label']} 初始化失败，已回退到 CPU (libx264)"
+
+                retry_cmd = self._build_extract_command(
+                    video_path, output_path, start_time, end_time, cpu_config
+                )
+                retry_result = self._run_ffmpeg_command(retry_cmd, timeout=3600)
+                return retry_result.returncode == 0 and os.path.exists(output_path)
+
+            return False
         except Exception as e:
             print(f"[ERROR] 提取片段失败: {e}")
             return False
@@ -232,7 +404,6 @@ class VideoSplitter:
         
         try:
             from transnetv2 import TransNetV2
-            from moviepy.editor import VideoFileClip
             
             # 创建输出文件夹
             os.makedirs(output_folder, exist_ok=True)
@@ -240,12 +411,18 @@ class VideoSplitter:
             # 加载模型
             if progress_callback:
                 progress_callback("正在加载模型...")
-            model = TransNetV2()
+            model = TransNetV2(
+                ffmpeg_path=self.ffmpeg_path,
+                gpu_acceleration=self.gpu_acceleration
+            )
             
             # 分析视频
             if progress_callback:
                 progress_callback("正在分析视频场景...")
-            video_frames, single_frame_pred, _ = model.predict_video_2(video_path)
+            video_frames, single_frame_pred, _ = model.predict_video_2(
+                video_path,
+                progress_callback=progress_callback
+            )
             
             # 检测场景边界
             scenes = model.predictions_to_scenes(single_frame_pred, threshold=0.15)
@@ -319,6 +496,7 @@ class VideoSplitter:
             # 提取视频片段
             output_files = []
             total_scenes = len(final_scenes)
+            self._resolve_video_encoder()
             
             for i, (start, end) in enumerate(final_scenes, 1):
                 if progress_callback:
@@ -379,6 +557,7 @@ class VideoSplitter:
             # 提取视频片段
             output_files = []
             total_segments = len(segments)
+            self._resolve_video_encoder()
             
             for i, (start, end) in enumerate(segments, 1):
                 if progress_callback:
@@ -465,7 +644,7 @@ class SceneSplittingApp(QMainWindow):
     
     def _init_ui(self):
         """初始化用户界面"""
-        self.setWindowTitle("双星科技场景智能分割工具 v1.1")
+        self.setWindowTitle("双星科技场景智能分割工具 v1.2")
         self.setMinimumSize(600, 700)
         
         # 中央 widget
